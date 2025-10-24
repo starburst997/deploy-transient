@@ -5,14 +5,11 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-  packages: write
-
 jobs:
   release:
-    name: Build and Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Initialize custom bot
         id: bot
@@ -21,20 +18,16 @@ jobs:
           app-id: ${{ secrets.BOT_ID }}
           private-key: ${{ secrets.BOT_KEY }}
 
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ steps.bot.outputs.token }}
 
-      - name: Tag Version
+      - name: Version and Tag
         id: version
         uses: starburst997/auto-version@v1
-
-      - name: Build and Push Helm
-        uses: starburst997/docker-helm-push@v1
         with:
-          version: ${{ steps.version.outputs.version }}
+          update-major-minor: true
 
       - name: Generate changelog and create release
         uses: starburst997/commits-logs@v1
