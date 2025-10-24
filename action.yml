@@ -1,0 +1,166 @@
+name: Deploy Transient Environment
+description: Deploy a transient Helm-based environment by fetching values from an existing HelmRelease
+author: starburst997
+
+inputs:
+  kube-config:
+    description: Kubernetes configuration (base64 encoded or plain)
+    required: true
+
+  helm-name:
+    description: Base name for the Helm release
+    required: true
+
+  namespace:
+    description: Base namespace (without suffixes like -pr or -dev)
+    required: true
+
+  suffix-pr:
+    description: Suffix to add to namespace for preview deployment
+    required: false
+    default: "-pr"
+
+  suffix-dev:
+    description: Suffix to add to namespace for dev deployment
+    required: false
+    default: "-dev"
+
+  source-namespace:
+    description: Source namespace to fetch HelmRelease values from (if provided, overrides automatic detection)
+    required: false
+    default: ""
+
+  environment:
+    description: Environment name (staging uses base namespace as source, others use namespace+suffix)
+    required: false
+    default: "dev"
+
+  registry:
+    description: OCI registry URL
+    required: false
+    default: "ghcr.io"
+
+  repository-owner:
+    description: Repository owner/organization
+    required: false
+    default: ${{ github.repository_owner }}
+
+  chart-name:
+    description: Chart name (repository name)
+    required: false
+    default: ${{ github.event.repository.name }}
+
+  chart-version:
+    description: Chart version to deploy
+    required: true
+
+  ingress-host:
+    description: Ingress host for the deployment
+    required: false
+    default: ""
+
+  future-version:
+    description: Future version environment variable
+    required: false
+    default: ""
+
+  additional-set-values:
+    description: Additional --set values for helm (one per line, e.g. "key1=value1\nkey2=value2")
+    required: false
+    default: ""
+
+  create-namespace:
+    description: Whether to create the namespace
+    required: false
+    default: "false"
+
+  helm-timeout:
+    description: Helm timeout for the deployment
+    required: false
+    default: "5m"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v4
+
+    - name: Configure kubectl
+      shell: bash
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ inputs.kube-config }}" > ~/.kube/config
+        chmod 600 ~/.kube/config
+        echo "✅ Configured kubectl"
+
+    - name: Deploy transient environment
+      shell: bash
+      run: |
+        # Build target namespace with suffix
+        TARGET_NAMESPACE="${{ inputs.namespace }}${{ inputs.suffix-pr }}"
+
+        # Verify kubectl connection
+        kubectl get pods -n $TARGET_NAMESPACE || echo "Namespace may not exist yet"
+
+        # Determine source namespace
+        if [[ -n "${{ inputs.source-namespace }}" ]]; then
+          SOURCE_NAMESPACE="${{ inputs.source-namespace }}"
+        elif [[ "${{ inputs.environment }}" == "staging" ]]; then
+          SOURCE_NAMESPACE="${{ inputs.namespace }}"
+        else
+          SOURCE_NAMESPACE="${{ inputs.namespace }}${{ inputs.suffix-dev }}"
+        fi
+
+        echo "Fetching values from HelmRelease in namespace: $SOURCE_NAMESPACE"
+
+        # Fetch values from existing HelmRelease and save to file
+        kubectl get helmrelease ${{ inputs.helm-name }} \
+          -n $SOURCE_NAMESPACE \
+          -o jsonpath='{.spec.values}' > /tmp/base-values.json
+
+        echo "Fetched values:"
+        cat /tmp/base-values.json
+
+        # Build chart URL
+        CHART_URL="oci://${{ inputs.registry }}/${{ inputs.repository-owner }}/charts/${{ inputs.chart-name }}"
+
+        # Build helm command
+        HELM_CMD="helm upgrade --install \
+          --namespace $TARGET_NAMESPACE \
+          --atomic \
+          --timeout ${{ inputs.helm-timeout }} \
+          --values /tmp/base-values.json \
+          --set createNamespace=${{ inputs.create-namespace }} \
+          --set namespace=$TARGET_NAMESPACE"
+
+        # Add optional ingress host
+        if [[ -n "${{ inputs.ingress-host }}" ]]; then
+          HELM_CMD="$HELM_CMD --set ingress.host=${{ inputs.ingress-host }}"
+        fi
+
+        # Add optional future version
+        if [[ -n "${{ inputs.future-version }}" ]]; then
+          HELM_CMD="$HELM_CMD --set env.FUTURE_VERSION=${{ inputs.future-version }}"
+        fi
+
+        # Add additional set values
+        if [[ -n "${{ inputs.additional-set-values }}" ]]; then
+          while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+              HELM_CMD="$HELM_CMD --set $line"
+            fi
+          done <<< "${{ inputs.additional-set-values }}"
+        fi
+
+        # Add release name and chart
+        HELM_CMD="$HELM_CMD ${{ inputs.helm-name }}-${{ inputs.environment }} $CHART_URL:${{ inputs.chart-version }}"
+
+        echo "Executing: $HELM_CMD"
+        eval $HELM_CMD
+
+branding:
+  icon: upload-cloud
+  color: blue
