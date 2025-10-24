@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deploy Transient - GitHub Action</title>
+    <meta
+      name="description"
+      content="A GitHub composite action that deploys transient Helm environments by inheriting values from existing HelmReleases."
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #d0d0d9;
+        background: #0c1018;
+        min-height: 100vh;
+      }
+
+      .hero-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100vh;
+        background: linear-gradient(135deg, #0c1018 0%, #191923 100%);
+        z-index: -1;
+      }
+
+      .hero-accent {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, #61afff20 0%, transparent 70%);
+        top: -300px;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      header {
+        padding: 2rem 0;
+        text-align: center;
+      }
+
+      .hero {
+        padding: 4rem 0 6rem;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(to right, #61afff, #98d280);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .tagline {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        color: #96969d;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-size: 1.1rem;
+      }
+
+      .btn-primary {
+        background: #61afff;
+        color: #0c1018;
+        border: 1px solid #61afff;
+      }
+
+      .btn-primary:hover {
+        background: #7abfff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 30px rgba(97, 175, 255, 0.3);
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: #d0d0d9;
+        border: 2px solid #3f3f3f;
+      }
+
+      .btn-secondary:hover {
+        background: #32373c;
+        border-color: #636669;
+      }
+
+      .features-section {
+        background: #141518;
+        border-top: 1px solid #3f3f3f;
+        border-bottom: 1px solid #3f3f3f;
+        padding: 5rem 0;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        margin-top: 3rem;
+      }
+
+      .feature {
+        text-align: center;
+        padding: 1.5rem;
+      }
+
+      .feature-icon {
+        width: 60px;
+        height: 60px;
+        background: #32373c;
+        border: 1px solid #3f3f3f;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 1.8rem;
+      }
+
+      .feature h3 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        color: #61afff;
+      }
+
+      .feature p {
+        color: #96969d;
+        line-height: 1.7;
+        font-size: 0.95rem;
+      }
+
+      .section-title {
+        text-align: center;
+        font-size: 2.5rem;
+        color: #d0d0d9;
+        margin-bottom: 1rem;
+      }
+
+      .section-subtitle {
+        text-align: center;
+        color: #96969d;
+        font-size: 1.2rem;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .usage-section {
+        padding: 4rem 0;
+        background: #0c1018;
+      }
+
+      .code-block {
+        background: #141518;
+        border: 1px solid #3f3f3f;
+        border-radius: 10px;
+        padding: 2rem;
+        margin: 2rem auto;
+        max-width: 800px;
+        overflow-x: auto;
+      }
+
+      .code-block pre {
+        font-family: "Monaco", "Courier New", monospace;
+        font-size: 0.9rem;
+        color: #d0d0d9;
+        line-height: 1.6;
+      }
+
+      .code-block code {
+        color: #98d280;
+      }
+
+      /* Syntax highlighting */
+      .yaml-key {
+        color: #61afff;
+      }
+
+      .yaml-string {
+        color: #98d280;
+      }
+
+      .yaml-value {
+        color: #ffe169;
+      }
+
+      .yaml-comment {
+        color: #636669;
+        font-style: italic;
+      }
+
+      .yaml-variable {
+        color: #e18cf5;
+      }
+
+      .reference-section {
+        background: #0c1018;
+        padding: 4rem 0;
+      }
+
+      .reference-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .reference-card {
+        background: #141518;
+        border: 1px solid #3f3f3f;
+        border-radius: 10px;
+        padding: 2rem;
+      }
+
+      .reference-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: #61afff;
+        border-bottom: 3px solid #61afff;
+        padding-bottom: 0.5rem;
+      }
+
+      .param-item {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #3f3f3f;
+      }
+
+      .param-item:last-child {
+        border-bottom: none;
+      }
+
+      .param-name {
+        font-family: "Monaco", monospace;
+        font-size: 0.95rem;
+        color: #98d280;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .param-desc {
+        font-size: 0.9rem;
+        color: #d0d0d9;
+        margin-bottom: 0.25rem;
+      }
+
+      .param-default {
+        font-size: 0.85rem;
+        color: #96969d;
+        font-style: italic;
+      }
+
+      .param-required {
+        display: inline-block;
+        background: #61afff;
+        color: #0c1018;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+        font-weight: 600;
+      }
+
+      footer {
+        background: #0c1018;
+        padding: 3rem 0;
+        text-align: center;
+        color: #96969d;
+        border-top: 1px solid #3f3f3f;
+      }
+
+      footer a {
+        color: #61afff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      footer a:hover {
+        color: #98d280;
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2.5rem;
+        }
+
+        .tagline {
+          font-size: 1.2rem;
+        }
+
+        .features {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .cta-buttons {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hero-background">
+      <div class="hero-accent"></div>
+    </div>
+
+    <header>
+      <div class="container">
+        <nav>
+          <a
+            href="https://github.com/starburst997/deploy-transient"
+            class="btn btn-secondary"
+          >
+            View on GitHub →
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <h1>Deploy Transient</h1>
+        <p class="tagline">
+          Deploy transient Helm environments with ease. Inherit values from
+          existing HelmReleases and create isolated preview environments that
+          match your dev/staging configuration.
+        </p>
+        <div class="cta-buttons">
+          <a
+            href="https://github.com/starburst997/deploy-transient"
+            class="btn btn-primary"
+          >
+            Get Started
+          </a>
+          <a
+            href="https://github.com/starburst997/deploy-transient#readme"
+            class="btn btn-secondary"
+          >
+            Documentation
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="features-section">
+      <div class="container">
+        <h2 class="section-title">Simplified Transient Deployments</h2>
+        <p class="section-subtitle">
+          Perfect for PR previews, feature branches, and temporary environments
+        </p>
+
+        <div class="features">
+          <div class="feature">
+            <div class="feature-icon">⎈</div>
+            <h3>Inherit Values</h3>
+            <p>
+              Fetch configuration from existing HelmReleases in your cluster
+              automatically.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">🔄</div>
+            <h3>Smart Overrides</h3>
+            <p>
+              Override specific values like ingress host and environment
+              variables.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">🌿</div>
+            <h3>Namespace Logic</h3>
+            <p>
+              Automatic namespace detection based on environment with
+              customizable suffixes.
+            </p>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <h3>Atomic Deploys</h3>
+            <p>
+              Atomic rollback on failure ensures your cluster stays in a
+              consistent state.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="usage-section">
+      <div class="container">
+        <h2 class="section-title">Quick Start</h2>
+        <p class="section-subtitle">
+          Deploy a PR preview environment in minutes
+        </p>
+
+        <div class="code-block">
+          <pre><code><span class="yaml-key">name:</span> <span class="yaml-string">Deploy PR Preview</span>
+<span class="yaml-key">on:</span>
+  <span class="yaml-key">pull_request:</span>
+    <span class="yaml-key">types:</span> <span class="yaml-value">[opened, synchronize]</span>
+
+<span class="yaml-key">jobs:</span>
+  <span class="yaml-key">preview:</span>
+    <span class="yaml-key">runs-on:</span> <span class="yaml-value">ubuntu-latest</span>
+    <span class="yaml-key">steps:</span>
+      - <span class="yaml-key">name:</span> <span class="yaml-string">Checkout</span>
+        <span class="yaml-key">uses:</span> <span class="yaml-value">actions/checkout@v4</span>
+
+      - <span class="yaml-key">name:</span> <span class="yaml-string">Deploy Preview</span>
+        <span class="yaml-key">uses:</span> <span class="yaml-value">starburst997/deploy-transient@v1</span>
+        <span class="yaml-key">with:</span>
+          <span class="yaml-key">kube-config:</span> <span class="yaml-variable">${{ secrets.KUBE_CONFIG }}</span>
+          <span class="yaml-key">helm-name:</span> <span class="yaml-value">my-app</span>
+          <span class="yaml-key">namespace:</span> <span class="yaml-value">my-app</span>
+          <span class="yaml-key">chart-version:</span> <span class="yaml-value">1.2.3</span>
+          <span class="yaml-key">ingress-host:</span> <span class="yaml-variable">pr-${{ github.event.pull_request.number }}.myapp.com</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="reference-section">
+      <div class="container">
+        <h2 class="section-title">Reference</h2>
+        <p class="section-subtitle">
+          Complete action inputs documentation
+        </p>
+
+        <div class="reference-grid">
+          <div class="reference-card">
+            <h3>Required Inputs</h3>
+
+            <div class="param-item">
+              <div class="param-name">
+                kube-config<span class="param-required">REQUIRED</span>
+              </div>
+              <div class="param-desc">
+                Kubernetes configuration (base64 or plain)
+              </div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">
+                helm-name<span class="param-required">REQUIRED</span>
+              </div>
+              <div class="param-desc">Base name for the Helm release</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">
+                namespace<span class="param-required">REQUIRED</span>
+              </div>
+              <div class="param-desc">
+                Base namespace (without suffixes)
+              </div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">
+                chart-version<span class="param-required">REQUIRED</span>
+              </div>
+              <div class="param-desc">Chart version to deploy</div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>Namespace Configuration</h3>
+
+            <div class="param-item">
+              <div class="param-name">suffix-pr</div>
+              <div class="param-desc">Suffix for target namespace</div>
+              <div class="param-default">Default: -pr</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">suffix-dev</div>
+              <div class="param-desc">
+                Suffix for source namespace (non-staging)
+              </div>
+              <div class="param-default">Default: -dev</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">source-namespace</div>
+              <div class="param-desc">Override source namespace detection</div>
+              <div class="param-default">Default: auto-detected</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">environment</div>
+              <div class="param-desc">
+                Environment name (affects source detection)
+              </div>
+              <div class="param-default">Default: dev</div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>Chart Configuration</h3>
+
+            <div class="param-item">
+              <div class="param-name">registry</div>
+              <div class="param-desc">OCI registry URL</div>
+              <div class="param-default">Default: ghcr.io</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">repository-owner</div>
+              <div class="param-desc">Repository owner/organization</div>
+              <div class="param-default">
+                Default: ${{ github.repository_owner }}
+              </div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">chart-name</div>
+              <div class="param-desc">Chart name (repository name)</div>
+              <div class="param-default">
+                Default: ${{ github.event.repository.name }}
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-card">
+            <h3>Deployment Options</h3>
+
+            <div class="param-item">
+              <div class="param-name">ingress-host</div>
+              <div class="param-desc">Ingress host override</div>
+              <div class="param-default">Default: none</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">future-version</div>
+              <div class="param-desc">Future version environment variable</div>
+              <div class="param-default">Default: none</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">additional-set-values</div>
+              <div class="param-desc">
+                Extra --set values for helm (one per line)
+              </div>
+              <div class="param-default">Default: none</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">create-namespace</div>
+              <div class="param-desc">Create namespace if missing</div>
+              <div class="param-default">Default: false</div>
+            </div>
+
+            <div class="param-item">
+              <div class="param-name">helm-timeout</div>
+              <div class="param-desc">Helm timeout duration</div>
+              <div class="param-default">Default: 5m</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <p>
+          <a href="https://github.com/starburst997/deploy-transient">GitHub</a>
+          •
+          <a href="https://github.com/starburst997/deploy-transient/issues"
+            >Issues</a
+          >
+          •
+          <a href="https://github.com/starburst997/deploy-transient/releases"
+            >Releases</a
+          >
+          •
+          <a href="https://github.com/starburst997/deploy-transient#readme"
+            >Documentation</a
+          >
+        </p>
+        <p style="margin-top: 1rem; color: #636669">Made by JD Boivin</p>
+      </div>
+    </footer>
+  </body>
+</html>
