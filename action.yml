@@ -50,6 +50,11 @@ inputs:
     required: false
     default: ${{ github.event.repository.name }}
 
+  chart-prefix:
+    description: Chart prefix path (e.g., "charts/" for OCI registry)
+    required: false
+    default: "charts/"
+
   chart-version:
     description: Chart version to deploy
     required: true
@@ -125,7 +130,7 @@ runs:
         cat /tmp/base-values.json
 
         # Build chart URL
-        CHART_URL="oci://${{ inputs.registry }}/${{ inputs.repository-owner }}/charts/${{ inputs.chart-name }}"
+        CHART_URL="oci://${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.chart-prefix }}${{ inputs.chart-name }}"
 
         # Build helm command
         HELM_CMD="helm upgrade --install \

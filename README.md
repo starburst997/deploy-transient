@@ -35,6 +35,7 @@ Perfect for creating isolated preview environments that match your dev/staging c
 | `chart-version`         | ✅       | -                              | Chart version to deploy                     |
 | `repository-owner`      | ❌       | `github.repository_owner`      | Repository owner/organization               |
 | `chart-name`            | ❌       | `github.event.repository.name` | Chart name (repository name)                |
+| `chart-prefix`          | ❌       | `charts/`                      | Chart prefix path in OCI registry           |
 | `suffix-pr`             | ❌       | `-pr`                          | Suffix for target namespace                 |
 | `suffix-dev`            | ❌       | `-dev`                         | Suffix for source namespace (non-staging)   |
 | `source-namespace`      | ❌       | _auto_                         | Override source namespace detection         |
@@ -79,7 +80,7 @@ This will:
 
 - Deploy to namespace: `s3-mirror-sample-pr` (namespace + default `-pr` suffix)
 - Fetch values from: `s3-mirror-sample-dev` (namespace + default `-dev` suffix)
-- Use chart: `oci://ghcr.io/{repository_owner}/charts/{repository_name}` (defaults from GitHub context)
+- Use chart: `oci://ghcr.io/{repository_owner}/charts/{repository_name}` (with default `charts/` prefix)
 - Use default registry: `ghcr.io`
 
 ## How It Works
