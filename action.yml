@@ -53,7 +53,7 @@ inputs:
   chart-prefix:
     description: Chart prefix path (e.g., "charts/" for OCI registry)
     required: false
-    default: "charts/"
+    default: "charts/dev"
 
   chart-version:
     description: Chart version to deploy
@@ -129,8 +129,12 @@ runs:
         echo "Fetched values:"
         cat /tmp/base-values.json
 
-        # Build chart URL
-        CHART_URL="oci://${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.chart-prefix }}${{ inputs.chart-name }}"
+        # Build chart URL with proper chart-prefix handling
+        CHART_PREFIX="${{ inputs.chart-prefix }}"
+        if [[ -n "$CHART_PREFIX" ]] && [[ "$CHART_PREFIX" != */ ]]; then
+          CHART_PREFIX="${CHART_PREFIX}/"
+        fi
+        CHART_URL="oci://${{ inputs.registry }}/${{ inputs.repository-owner }}/${CHART_PREFIX}${{ inputs.chart-name }}"
 
         # Build helm command
         HELM_CMD="helm upgrade --install \
